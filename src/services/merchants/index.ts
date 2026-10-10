@@ -1,0 +1,198 @@
+import {
+  authentication,
+  random,
+  numberPonselFormat,
+  isNumberPonsel,
+  randomBytes,
+  getDateTime,
+  getDateMaximum,
+  seckretPrivate,
+  mergeStringWithCharacter,
+  bcryptCsfPassword,
+  generateKodeOrder,
+} from "../../helpers";
+import { pool } from "../../database/pool";
+
+import { executionError } from "../responseHandling";
+import jwt, {
+  Jwt,
+  JwtPayload,
+  Secret,
+  TokenExpiredError,
+  JsonWebTokenError,
+  NotBeforeError,
+} from "jsonwebtoken";
+
+const createDataToMerchantBank = async (
+  user_id: string | number,
+  merchant_id: string | number,
+  requestBody: any
+): Promise<any> => {
+  try {
+    const { bank_name, bank_no, merchant_name } = requestBody;
+    let is_active = true;
+    let today = new Date();
+    let mergename = `${merchant_name}-${merchant_id}`;
+    let merchant_code = mergeStringWithCharacter(mergename);
+    let create_merchantbank = await pool.query(
+      "INSERT INTO m_merchant_banks (merchant_id, bank_name, bank_no, is_active, created_by, updated_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
+      [
+        merchant_id,
+        bank_name,
+        bank_no,
+        is_active,
+        user_id,
+        user_id,
+        getDateTime(today),
+        getDateTime(today),
+      ]
+    );
+    let update_curr_user = await pool.query(
+      "UPDATE m_users SET merchant_id = $1, is_active = $2 WHERE id = $3 RETURNING *",
+      [merchant_id, is_active, user_id]
+    );
+    let update_curr_merchant = await pool.query(
+      "UPDATE m_merchants SET code = $1, is_active = $2, updated_at = $3 WHERE id = $4 RETURNING *",
+      [merchant_code, is_active, getDateTime(today), merchant_id]
+    );
+    let data_update = {
+      user: update_curr_user.rows[0],
+      merchant: update_curr_merchant.rows[0],
+      merchant_bank: create_merchantbank.rows[0],
+    };
+    return data_update;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const registerMerchant = async (requestBody: any): Promise<any> => {
+  try {
+    const {
+      email_user,
+      password,
+      role,
+      bank_name,
+      bank_no,
+      merchant_name,
+      merchant_email,
+      address,
+    } = requestBody;
+
+    if (!email_user) {
+      return executionError(400, "email_user cannot be empty");
+    }
+    let check_user_email = await pool.query(
+      "SELECT * FROM m_users WHERE email = $1",
+      [email_user]
+    );
+    let check_emailuser = check_user_email.rows;
+    if (check_emailuser.length > 0) {
+      return executionError(400, "email has been using, please login first");
+    }
+    if (!password) {
+      return executionError(400, "password cannot be empty");
+    }
+    if (!merchant_name) {
+      return executionError(400, "merchant_name cannot be empty");
+    }
+    if (!merchant_email) {
+      return executionError(400, "merchant_email cannot be empty");
+    }
+    if (!address) {
+      return executionError(400, "address cannot be empty");
+    }
+    // if (!role) {
+    //   return executionError(400, "role cannot be empty");
+    // }
+    if (!bank_name) {
+      return executionError(400, "bank_name cannot be empty");
+    }
+    if (!bank_no) {
+      return executionError(400, "bank_no cannot be empty");
+    }
+    let merchant_logo = "logo.png";
+    let data_role = ["Admin", "Owner", "Superadmin"];
+    // let check_role = data_role.find((e) => e === role);
+    // if (!check_role) {
+    //   return executionError(400, "role is wrong");
+    // }
+    let myrole = "Owner";
+    let salt = randomBytes();
+    let password_val = authentication(salt, password);
+    let create_user = await pool.query(
+      "INSERT INTO m_users (email, password, role, is_active, salt) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+      [email_user, password_val, myrole, false, salt]
+    );
+    let curr_datauser = create_user.rows[0];
+    let today = new Date();
+    let create_merchant = await pool.query(
+      "INSERT INTO m_merchants (name, email, address, logo, is_active, created_by, updated_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+      [
+        merchant_name,
+        merchant_email,
+        address,
+        merchant_logo,
+        false,
+        curr_datauser.id,
+        curr_datauser.id,
+        getDateTime(today),
+        getDateTime(today),
+      ]
+    );
+    let curr_datamerchant = create_merchant.rows[0];
+    try {
+      let update_merchant = await createDataToMerchantBank(
+        curr_datauser.id,
+        curr_datamerchant.id,
+        requestBody
+      );
+      let new_merchant = {
+        ...update_merchant,
+      };
+      return new_merchant;
+    } catch (error) {
+      throw error;
+    }
+  } catch (error) {
+    return executionError(404, `Error table: ${error}`);
+  }
+};
+
+const getMerchantDetailById = async (requestParams: any): Promise<any> => {
+  try {
+    const { merchant_id } = requestParams;
+    if (!merchant_id) {
+      return executionError(400, "merchant_id cannot be empty");
+    }
+    let merchant_data = await pool.query(
+      "SELECT id, code, name, email, logo FROM m_merchants WHERE id = $1",
+      [merchant_id]
+    );
+    if (merchant_data.rows.length === 0) {
+      return executionError(404, "merchant not found");
+    }
+    let merchant_setting = await pool.query(
+      "SELECT tax, admin FROM m_merchant_setting WHERE merchant_id = $1",
+      [merchant_id]
+    );
+    if (merchant_setting.rows.length === 0) {
+      return executionError(404, "merchant setting not found");
+    }
+    let merchant_banks = await pool.query(
+      "SELECT id, bank_name, bank_no, bank_account, is_active FROM m_merchant_banks WHERE merchant_id = $1",
+      [merchant_id]
+    );
+    let data_response = {
+      ...merchant_data.rows[0],
+      ...merchant_setting.rows[0],
+      banks: merchant_banks.rows,
+    };
+
+    return data_response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export default { registerMerchant, getMerchantDetailById };
