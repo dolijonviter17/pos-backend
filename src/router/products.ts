@@ -5,16 +5,16 @@ export default (router: express.Router) => {
   router.post("/products/byMerchantId", productsController.menusByMerchantId);
   router.post(
     "/product/create",
-    productsController.createNewProductByMerchantId
+    productsController.createNewProductByMerchantId,
   );
   router.patch("/product/update", productsController.updateProductByMerchantId);
   router.post(
     "/products/detailProductByMerchantId",
-    productsController.detailProductByMerchantId
+    productsController.detailProductByMerchantId,
   );
   router.get("/product/:product_id", productsController.detailProductById);
   router.get(
     "/product/:merchant_id/:category_id/:offset/:limit",
-    productsController.listProductByCategoryId
+    productsController.listProductByCategoryId,
   );
 };
