@@ -11,6 +11,7 @@ import {
   bcryptCsfPassword,
   generateKodeOrder,
   generateId,
+  getUserIdFromToken,
 } from "../../helpers";
 import { pool } from "../../database/pool";
 
@@ -23,6 +24,21 @@ import jwt, {
   JsonWebTokenError,
   NotBeforeError,
 } from "jsonwebtoken";
+
+const formatPhoneNumber = (phone: string): string => {
+  // hapus karakter selain angka
+  const clean = phone.replace(/\D/g, "");
+  // ubah 08 -> 62
+  if (clean.startsWith("08")) {
+    return "62" + clean.slice(1);
+  }
+  // jika sudah 62
+  if (clean.startsWith("62")) {
+    return clean;
+  }
+  return "";
+  // throw new Error("Format nomor ponsel tidak valid");
+};
 
 const createDataToMerchantBank = async (
   user_id: string | number,
@@ -370,9 +386,127 @@ const getMerchantInfo = async (requestParams: any): Promise<any> => {
   }
 };
 
+const getMerchantBranchByMerchantId = async (
+  requestHeaders: any,
+): Promise<any> => {
+  try {
+    const authHeader = requestHeaders.authorization;
+    if (!authHeader) {
+      return executionError(404, "token not found");
+    }
+
+    const userLogin = getUserIdFromToken(authHeader);
+    if (!userLogin) {
+      return executionError(401, "token not valid");
+    }
+    const data_merchant = await pool.query(
+      "SELECT * FROM m_merchant_branch WHERE id = $1",
+      [userLogin.merchant_id],
+    );
+
+    return data_merchant.rows;
+  } catch (error) {
+    return executionError(404, `Error table: ${error}`);
+  }
+};
+
+const createNewMerchantBranch = async (
+  requestHeaders: any,
+  requestBody: any,
+): Promise<any> => {
+  try {
+    const authHeader = requestHeaders.authorization;
+    if (!authHeader) {
+      return executionError(404, "token not found");
+    }
+
+    const userLogin = getUserIdFromToken(authHeader);
+    if (!userLogin) {
+      return executionError(401, "token not valid");
+    }
+    const {
+      email,
+      address,
+      province_id,
+      regency_id,
+      district_id,
+      village_id,
+      merchantbranch_name,
+      phone,
+      fullname,
+    } = requestBody;
+    if (
+      !fullname ||
+      !email ||
+      !address ||
+      !province_id ||
+      !regency_id ||
+      !district_id ||
+      !village_id ||
+      !merchantbranch_name ||
+      !phone
+    ) {
+      return executionError(
+        404,
+        "email, password, role, bank_name, bank_no, merchant_name, merchant_email, province_id, regency_id, district_id, village_id, address wajib diisi",
+      );
+    }
+
+    const format_number_phone = formatPhoneNumber(phone);
+    let check_user_phone = await pool.query(
+      "SELECT * FROM m_users WHERE phone = $1",
+      [format_number_phone],
+    );
+    let check_phoneuser = check_user_phone.rows;
+    if (check_phoneuser.length > 0) {
+      return executionError(401, "phone sudah digunakan");
+    }
+
+    let check_user_email = await pool.query(
+      "SELECT * FROM m_users WHERE email = $1",
+      [email],
+    );
+    let check_emailuser = check_user_email.rows;
+    if (check_emailuser.length > 0) {
+      return executionError(401, "email sudah digunakan");
+    }
+    let salt = randomBytes();
+    let password_val = authentication(salt, "admin123");
+    const role = "Admin";
+    let create_user = await pool.query(
+      "INSERT INTO m_users (fullname, email, phone, password, role, is_active, salt, merchant_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+      [
+        fullname,
+        email,
+        format_number_phone,
+        password_val,
+        role,
+        true,
+        salt,
+        authHeader.merchant_id,
+      ],
+    );
+    let curr_datauser = create_user.rows[0];
+    try {
+      let update_merchant = await createDataMerchantBranch(
+        curr_datauser.id,
+        authHeader.merchant_id,
+        requestBody,
+      );
+      return update_merchant;
+    } catch (error) {
+      throw error;
+    }
+  } catch (error) {
+    return executionError(404, `Error table: ${error}`);
+  }
+};
+
 export default {
   registerMerchant,
   getMerchantDetailById,
   createNewMerchant,
   getMerchantInfo,
+  getMerchantBranchByMerchantId,
+  createNewMerchantBranch,
 };

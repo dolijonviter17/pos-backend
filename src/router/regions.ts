@@ -6,4 +6,16 @@ export default (router: express.Router) => {
     "/region/province/:province_id",
     regionsController.getProvinceById,
   );
+  router.get(
+    "/region/regency/:province_id",
+    regionsController.getRegenciesByProvinceId,
+  );
+  router.get(
+    "/region/district/:regency_id",
+    regionsController.getDistrictsByRegencyId,
+  );
+  router.get(
+    "/region/village/:regency_id",
+    regionsController.getVillagesByDistrictId,
+  );
 };

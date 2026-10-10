@@ -67,4 +67,75 @@ const getMerchantInfo = async (
   }
 };
 
-export default { createNewMerchant, getMerchantInfo };
+const getMerchantBranchByMerchantId = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (isBodyEmpty(req.params)) {
+      return res.status(StatusCodes.PRECONDITION_FAILED).json({
+        message:
+          "merchantsV2Service.getMerchantBranchByMerchantId - params not provided!",
+      });
+    }
+    const apiResponse = await merchantsV2Service.getMerchantBranchByMerchantId(
+      req.headers,
+    );
+    if (apiResponse.executionError) {
+      return res
+        .status(apiResponse.status)
+        .json({ status: apiResponse.status, message: apiResponse.message });
+    }
+    return res.status(200).json({
+      status: 200,
+      message: "Merchant Detail Successfully",
+      method: "GET",
+      response: {
+        results: apiResponse,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createNewMerchantBranch = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (isBodyEmpty(req.body)) {
+      return res.status(StatusCodes.PRECONDITION_FAILED).json({
+        message:
+          "merchantsV2Service.createNewMerchantBranch - body not provided!",
+      });
+    }
+    const apiResponse = await merchantsV2Service.createNewMerchantBranch(
+      req.headers,
+      req.body,
+    );
+    if (apiResponse.executionError) {
+      return res
+        .status(apiResponse.status)
+        .json({ status: apiResponse.status, message: apiResponse.message });
+    }
+    return res.status(200).json({
+      status: 200,
+      message: "Register Merchant Successfully",
+      response: {
+        results: apiResponse,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default {
+  createNewMerchant,
+  getMerchantInfo,
+  getMerchantBranchByMerchantId,
+  createNewMerchantBranch,
+};

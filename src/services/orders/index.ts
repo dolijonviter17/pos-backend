@@ -39,7 +39,7 @@ interface CustomJwtPayload extends JwtPayload {
 
 const createDataToOrderDetails = async (
   order_id: string | number,
-  products: any[]
+  products: any[],
 ): Promise<any> => {
   try {
     // sss
@@ -54,7 +54,7 @@ const createDataToOrderDetails = async (
           Number(p.product_id),
           p.quantity,
           p.price_at_order,
-          p.subtotal_at_order
+          p.subtotal_at_order,
         );
         return `($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4})`;
       })
@@ -118,7 +118,7 @@ const orderMenus = async (requestBody: any): Promise<any> => {
         status,
         subtotal,
         grand_total,
-      ]
+      ],
     );
     let curr_order = create_order.rows[0];
     const product_at_order: any[] = [];
@@ -131,12 +131,12 @@ const orderMenus = async (requestBody: any): Promise<any> => {
       ) {
         return executionError(
           400,
-          "product_id / quantity / price_at_order cannot be empty"
+          "product_id / quantity / price_at_order cannot be empty",
         );
       }
       let check_product = await pool.query(
         "SELECT price FROM m_products WHERE id = $1 AND merchant_id = $2",
-        [curr_product.product_id, merchant_id]
+        [curr_product.product_id, merchant_id],
       );
       if (check_product.rowCount == 0) {
         return executionError(400, "product is not available");
@@ -154,12 +154,12 @@ const orderMenus = async (requestBody: any): Promise<any> => {
     }
     let update_order = await pool.query(
       "UPDATE t_orders SET subtotal = $1, grand_total = $2 WHERE id = $3 RETURNING *",
-      [subtotal, grand_total, curr_order.id]
+      [subtotal, grand_total, curr_order.id],
     );
     try {
       let create_order_details = await createDataToOrderDetails(
         curr_order.id,
-        product_at_order
+        product_at_order,
       );
       let dataku = {
         ...create_order_details,
@@ -176,7 +176,7 @@ const orderMenus = async (requestBody: any): Promise<any> => {
 
 const createOrderByMerchantId = async (
   requestBody: any,
-  requestHeaders: any
+  requestHeaders: any,
 ): Promise<any> => {
   try {
     const { products, merchant_id, table_no, order_type, notes } = requestBody;
@@ -219,7 +219,7 @@ const createOrderByMerchantId = async (
     // Ambil data customer
     let customer_data = await pool.query(
       "SELECT * FROM m_customers WHERE id = $1",
-      [userLogin.id]
+      [userLogin.id],
     );
     if (customer_data.rows.length === 0)
       return executionError(404, "customer not found");
@@ -230,7 +230,7 @@ const createOrderByMerchantId = async (
     // Ambil data merchant
     let merchant_data = await pool.query(
       "SELECT id, code, name, email, logo FROM m_merchants WHERE id = $1",
-      [merchant_id]
+      [merchant_id],
     );
     if (merchant_data.rows.length === 0)
       return executionError(404, "merchant not found");
@@ -240,7 +240,7 @@ const createOrderByMerchantId = async (
     let admin = 0;
     let merchant_setting = await pool.query(
       "SELECT * FROM m_merchant_setting WHERE merchant_id = $1",
-      [merchant_id]
+      [merchant_id],
     );
     if (merchant_setting.rows.length > 0) {
       tax = merchant_setting.rows[0].tax || 0;
@@ -259,13 +259,13 @@ const createOrderByMerchantId = async (
       ) {
         return executionError(
           404,
-          "product_id / quantity / price_at_order cannot be empty"
+          "product_id / quantity / price_at_order cannot be empty",
         );
       }
 
       let check_product = await pool.query(
         "SELECT price, is_active FROM m_products WHERE id = $1 AND merchant_id = $2",
-        [curr_product.product_id, merchant_id]
+        [curr_product.product_id, merchant_id],
       );
 
       if (check_product.rowCount === 0) {
@@ -320,7 +320,7 @@ const createOrderByMerchantId = async (
         userLogin.id,
         uuid,
         notes,
-      ]
+      ],
     );
 
     let curr_order = create_order.rows[0];
@@ -341,7 +341,7 @@ const createOrderByMerchantId = async (
     // Hitung subtotal dan grand_total
     const subtotal = product_at_order.reduce(
       (sum, item) => sum + item.subtotal_at_order,
-      0
+      0,
     );
 
     let tax_val = tax > 0 ? (subtotal * tax) / 100 : 0;
@@ -352,7 +352,7 @@ const createOrderByMerchantId = async (
     // Update order
     await pool.query(
       "UPDATE t_orders SET subtotal = $1, grand_total = $2, tax = $3, delivery = $4, admin = $5 WHERE id = $6 RETURNING *",
-      [subtotal, grand_total, tax_val, delivery, admin_val, curr_order.id]
+      [subtotal, grand_total, tax_val, delivery, admin_val, curr_order.id],
     );
 
     // Simpan order detail
@@ -373,7 +373,7 @@ const createOrderByMerchantId = async (
 
 const getOrdersByCustomerId = async (
   requestParams: any,
-  requestHeaders: any
+  requestHeaders: any,
 ): Promise<any> => {
   try {
     const { status } = requestParams;
@@ -394,14 +394,14 @@ const getOrdersByCustomerId = async (
 
     let customer_data = await pool.query(
       "SELECT * FROM m_customers WHERE id = $1",
-      [userLogin.id]
+      [userLogin.id],
     );
     if (customer_data.rows.length === 0) {
       return executionError(404, "customer not found");
     }
     let customer_orders = await pool.query(
       "SELECT id, order_code, order_date, order_type, status, grand_total, subtotal as items  FROM t_orders WHERE customer_id = $1 AND status = $2 ORDER BY order_date DESC",
-      [userLogin.id, capitalizeFirstLetter(status_val)]
+      [userLogin.id, capitalizeFirstLetter(status_val)],
     );
     if (customer_orders.rows.length === 0) {
       return [];
@@ -412,11 +412,11 @@ const getOrdersByCustomerId = async (
       let el = data_order[i];
       let customer_payment = await pool.query(
         "SELECT payment_date as paid_at FROM t_payments WHERE order_id = $1",
-        [el.id]
+        [el.id],
       );
       let data_ordertype = await pool.query(
         "SELECT id, name FROM m_order_types WHERE id = $1",
-        [el.order_type]
+        [el.order_type],
       );
       data_response.push({
         ...el,
@@ -432,7 +432,7 @@ const getOrdersByCustomerId = async (
 };
 const getOrdersDetailsByCustomerId = async (
   requestParams: any,
-  requestHeaders: any
+  requestHeaders: any,
 ): Promise<any> => {
   try {
     const { status, order_id } = requestParams;
@@ -456,21 +456,21 @@ const getOrdersDetailsByCustomerId = async (
 
     let customer_data = await pool.query(
       "SELECT * FROM m_customers WHERE id = $1",
-      [userLogin.id]
+      [userLogin.id],
     );
     if (customer_data.rows.length === 0) {
       return executionError(404, "customer not found");
     }
     let customer_orders = await pool.query(
       "SELECT id, order_code, order_date, order_type, status, grand_total, subtotal, tax, admin, delivery  FROM t_orders WHERE id = $1 AND customer_id = $2",
-      [order_id, userLogin.id]
+      [order_id, userLogin.id],
     );
     if (customer_orders.rows.length === 0) {
       return executionError(404, "Order not found");
     }
     let data_orderdetails = await pool.query(
       "SELECT t2.id, t2.product_name as name, t2.photo, t1.price_at_order as price, t1.quantity, t1.subtotal_at_order as total_price FROM t_orderdetails t1 LEFT JOIN m_products t2 ON t2.id = t1.product_id WHERE order_id = $1",
-      [order_id]
+      [order_id],
     );
     let data_order = customer_orders.rows[0];
     let customer_payment = await pool.query(
@@ -482,11 +482,11 @@ const getOrdersDetailsByCustomerId = async (
      END AS redirect_url 
    FROM t_payments 
    WHERE order_id = $1`,
-      [order_id]
+      [order_id],
     );
     let data_ordertype = await pool.query(
       "SELECT id, name FROM m_order_types WHERE id = $1",
-      [order_id]
+      [order_id],
     );
 
     let data_response = {
