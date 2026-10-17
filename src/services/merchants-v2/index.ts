@@ -5,25 +5,31 @@ import {
   isNumberPonsel,
   randomBytes,
   getDateTime,
-  getDateMaximum,
-  seckretPrivate,
-  mergeStringWithCharacter,
-  bcryptCsfPassword,
-  generateKodeOrder,
   generateId,
   getUserIdFromToken,
 } from "../../helpers";
 import { pool } from "../../database/pool";
 
 import { executionError } from "../responseHandling";
-import jwt, {
-  Jwt,
-  JwtPayload,
-  Secret,
-  TokenExpiredError,
-  JsonWebTokenError,
-  NotBeforeError,
-} from "jsonwebtoken";
+
+function getCookie(
+  cookieHeader: string | null,
+  name: string,
+): string | undefined {
+  if (!cookieHeader) return undefined;
+
+  const cookies = cookieHeader.split(";");
+
+  for (const cookie of cookies) {
+    const [cookieName, ...cookieValue] = cookie.trim().split("=");
+
+    if (cookieName === name) {
+      return decodeURIComponent(cookieValue.join("="));
+    }
+  }
+
+  return undefined;
+}
 
 const formatPhoneNumber = (phone: string): string => {
   // hapus karakter selain angka
@@ -299,6 +305,7 @@ const createNewMerchant = async (requestBody: any): Promise<any> => {
       regency_id,
       district_id,
       village_id,
+      fullname,
     } = requestBody;
     if (
       !email ||
@@ -311,11 +318,12 @@ const createNewMerchant = async (requestBody: any): Promise<any> => {
       !province_id ||
       !regency_id ||
       !district_id ||
-      !village_id
+      !village_id ||
+      !fullname
     ) {
       return executionError(
         400,
-        "email, password, role, bank_name, bank_no, merchant_name, merchant_email, province_id, regency_id, district_id, village_id, address wajib diisi",
+        "email, password, role, bank_name, bank_no, merchant_name, merchant_email, province_id, regency_id, district_id, village_id, address, fullname wajib diisi",
       );
     }
     let check_user_email = await pool.query(
@@ -330,8 +338,8 @@ const createNewMerchant = async (requestBody: any): Promise<any> => {
     let password_val = authentication(salt, password);
     const role = "Owner";
     let create_user = await pool.query(
-      "INSERT INTO m_users (email, password, role, is_active, salt) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      [email, password_val, role, false, salt],
+      "INSERT INTO m_users (email, password, role, is_active, salt, fullname) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+      [email, password_val, role, false, salt, fullname],
     );
     let curr_datauser = create_user.rows[0];
     let today = new Date();
@@ -386,16 +394,13 @@ const getMerchantInfo = async (requestParams: any): Promise<any> => {
   }
 };
 
-const getMerchantBranchByMerchantId = async (
-  requestHeaders: any,
-): Promise<any> => {
+const getMerchantBranchByMerchantId = async (cookies: any): Promise<any> => {
   try {
-    const authHeader = requestHeaders.authorization;
-    if (!authHeader) {
+    const token = cookies.token;
+    if (!token) {
       return executionError(404, "token not found");
     }
-
-    const userLogin = getUserIdFromToken(authHeader);
+    const userLogin = getUserIdFromToken(token);
     if (!userLogin) {
       return executionError(401, "token not valid");
     }
@@ -411,19 +416,11 @@ const getMerchantBranchByMerchantId = async (
 };
 
 const createNewMerchantBranch = async (
-  requestHeaders: any,
   requestBody: any,
+  userAuth: any,
 ): Promise<any> => {
   try {
-    const authHeader = requestHeaders.authorization;
-    if (!authHeader) {
-      return executionError(404, "token not found");
-    }
-
-    const userLogin = getUserIdFromToken(authHeader);
-    if (!userLogin) {
-      return executionError(401, "token not valid");
-    }
+    const { merchant_id } = userAuth;
     const {
       email,
       address,
@@ -448,7 +445,7 @@ const createNewMerchantBranch = async (
     ) {
       return executionError(
         404,
-        "email, password, role, bank_name, bank_no, merchant_name, merchant_email, province_id, regency_id, district_id, village_id, address wajib diisi",
+        "email, role, bank_name, bank_no, merchant_name, merchant_email, province_id, regency_id, district_id, village_id, address wajib diisi",
       );
     }
 
@@ -471,7 +468,7 @@ const createNewMerchantBranch = async (
       return executionError(401, "email sudah digunakan");
     }
     let salt = randomBytes();
-    let password_val = authentication(salt, "admin123");
+    let password_val = authentication(salt, "Password123");
     const role = "Admin";
     let create_user = await pool.query(
       "INSERT INTO m_users (fullname, email, phone, password, role, is_active, salt, merchant_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
@@ -483,14 +480,14 @@ const createNewMerchantBranch = async (
         role,
         true,
         salt,
-        authHeader.merchant_id,
+        merchant_id,
       ],
     );
     let curr_datauser = create_user.rows[0];
     try {
       let update_merchant = await createDataMerchantBranch(
         curr_datauser.id,
-        authHeader.merchant_id,
+        merchant_id,
         requestBody,
       );
       return update_merchant;

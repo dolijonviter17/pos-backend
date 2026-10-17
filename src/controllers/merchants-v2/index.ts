@@ -1,12 +1,7 @@
-import express from "express";
 import { Request, Response, NextFunction } from "express";
 import merchantsV2Service from "../../services/merchants-v2";
 import { StatusCodes } from "http-status-codes";
-import { ApiError } from "../../error/apiError";
-import { isBodyEmpty } from "../../helpers";
-import jwt, { JwtPayload, Secret } from "jsonwebtoken";
-import { seckretPrivate } from "../../helpers";
-import { pool } from "../../database/pool";
+import { isBodyEmpty, verifyToken } from "../../helpers";
 
 const createNewMerchant = async (
   req: Request,
@@ -80,7 +75,7 @@ const getMerchantBranchByMerchantId = async (
       });
     }
     const apiResponse = await merchantsV2Service.getMerchantBranchByMerchantId(
-      req.headers,
+      req.cookies,
     );
     if (apiResponse.executionError) {
       return res
@@ -112,9 +107,21 @@ const createNewMerchantBranch = async (
           "merchantsV2Service.createNewMerchantBranch - body not provided!",
       });
     }
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
+    console.log("token", token);
+
+    const userAuth = verifyToken(token);
+    console.log("userAuth", userAuth);
+
+    if (!userAuth) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
     const apiResponse = await merchantsV2Service.createNewMerchantBranch(
-      req.headers,
       req.body,
+      userAuth,
     );
     if (apiResponse.executionError) {
       return res
@@ -123,7 +130,7 @@ const createNewMerchantBranch = async (
     }
     return res.status(200).json({
       status: 200,
-      message: "Register Merchant Successfully",
+      message: "Register Branch Merchant Successfully",
       response: {
         results: apiResponse,
       },

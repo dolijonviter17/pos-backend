@@ -1,3 +1,6 @@
+import * as dotenv from "dotenv";
+
+dotenv.config();
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import jwt, {
@@ -8,21 +11,29 @@ import jwt, {
   JsonWebTokenError,
   NotBeforeError,
 } from "jsonwebtoken";
-const SECRET = "FOODORDER-REST-API";
 
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET tidak ditemukan di file .env");
+}
+export { JWT_SECRET };
 interface CustomJwtPayload extends JwtPayload {
   id: string; // Adjust this according to your JWT payload structure
   email: string;
 }
 export const random = () => crypto.randomBytes(128).toString("base64");
-
+export const verifyToken = (token: string) => {
+  return jwt.verify(token, JWT_SECRET);
+};
 export const authentication = (salt: string, password: string) => {
   return crypto
     .createHmac("sha256", [salt, password].join("/"))
-    .update(SECRET)
+    .update(JWT_SECRET)
     .digest("hex");
 };
-
+export const generateToken = async (data: any): Promise<string> => {
+  return jwt.sign(data, JWT_SECRET, { expiresIn: "1d" });
+};
 export const randomBytes = () => crypto.randomBytes(64).toString("base64");
 export const randomBytesPayment = () =>
   crypto.randomBytes(32).toString("base64");
@@ -226,6 +237,31 @@ export const getUserIdFromToken = (token: string): any | null => {
   try {
     const decoded = jwt.verify(token, seckretPrivate()) as CustomJwtPayload;
     if (decoded && decoded.id && decoded.email) {
+      return decoded;
+    }
+    return null;
+  } catch (error) {
+    // Handle specific JWT errors
+    if (error instanceof TokenExpiredError) {
+      console.error("Token has expired:", error.message);
+      throw new Error(error.message);
+    } else if (error instanceof JsonWebTokenError) {
+      console.error("JWT error:", error.message);
+      throw new Error(error.message);
+    } else if (error instanceof NotBeforeError) {
+      console.error("Token not active yet:", error.message);
+      throw new Error(error.message);
+    } else {
+      console.error("Token verification failed:", error);
+      return null;
+    }
+  }
+};
+
+export const getUserMerchant = (token: string): any | null => {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded) {
       return decoded;
     }
     return null;
