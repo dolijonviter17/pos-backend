@@ -55,7 +55,7 @@ const loginUser = async (requestBody: any): Promise<any> => {
 
     const findUser = await pool.query(
       "SELECT * FROM m_customers where email = $1",
-      [email]
+      [email],
     );
     if (findUser.rows.length === 0) {
       return executionError(404, "wrong email please register first");
@@ -67,6 +67,7 @@ const loginUser = async (requestBody: any): Promise<any> => {
       merchant_id: user.merchant_id,
     };
     const token = jwt.sign(user_login, seckretPrivate());
+
     return {
       user: user_login,
       token,
@@ -96,7 +97,7 @@ const createNewUser = async (requestBody: any): Promise<any> => {
     if (password !== password_confirm) {
       return executionError(
         400,
-        "confirm password must be match with password"
+        "confirm password must be match with password",
       );
     }
 
@@ -122,13 +123,13 @@ const createNewUser = async (requestBody: any): Promise<any> => {
     if (phone_number.length < 10 || phone_number.length > 13) {
       return executionError(
         400,
-        "phone number must be between 10 to 13 characters"
+        "phone number must be between 10 to 13 characters",
       );
     }
 
     const findUser = await pool.query(
       "SELECT * FROM m_customers where email = $1",
-      [email]
+      [email],
     );
     if (findUser.rows.length > 0) {
       return executionError(400, "email is has been using, not valid");
@@ -136,7 +137,7 @@ const createNewUser = async (requestBody: any): Promise<any> => {
 
     const findUserByTelepon = await pool.query(
       "SELECT * FROM m_customers where phone_number = $1",
-      [phone_number]
+      [phone_number],
     );
     if (findUserByTelepon.rows.length > 0) {
       return executionError(400, "The phone number is already registered");
@@ -163,7 +164,7 @@ const createNewUser = async (requestBody: any): Promise<any> => {
     delete user_login.password;
     const token = jwt.sign(
       { id: user_login.id, email: user_login.email },
-      seckretPrivate()
+      seckretPrivate(),
     );
     return {
       user_login,
@@ -189,7 +190,7 @@ const createNewMerchant = async (requestBody: any): Promise<any> => {
     ) {
       return executionError(
         400,
-        "username / first_name / last_name / email / password / number_phone. cannot be empty"
+        "username / first_name / last_name / email / password / number_phone. cannot be empty",
       );
     }
     const numberPhone = numberPonselFormat(number_phone);
@@ -199,7 +200,7 @@ const createNewMerchant = async (requestBody: any): Promise<any> => {
     }
     const findUser = await pool.query(
       "SELECT * FROM users_tb where email = $1",
-      [email]
+      [email],
     );
     if (findUser.rows.length > 0) {
       return executionError(404, "email is has been using, not valid");
@@ -230,7 +231,7 @@ const createNewMerchant = async (requestBody: any): Promise<any> => {
     ]);
     const token = jwt.sign(
       { id: user_login.id, email: user_login.email },
-      seckretPrivate()
+      seckretPrivate(),
     );
     return {
       user_login,
@@ -261,7 +262,7 @@ const logoutUser = async (requestHeaders: any): Promise<any> => {
     }
     const loginuser = await pool.query(
       "UPDATE  users  SET remember_token = $1, updated_at = $2 WHERE id = $3 RETURNING *",
-      [null, getDateTime(getDateMaximum()), findUser.rows[0].id]
+      [null, getDateTime(getDateMaximum()), findUser.rows[0].id],
     );
     return loginuser.rows[0];
   } catch (error) {
@@ -286,7 +287,7 @@ const registerWithGoogle = async (requestBody: any): Promise<any> => {
     ) {
       return executionError(
         400,
-        "username / first_name / last_name / email / password / number_phone. cannot be empty"
+        "username / first_name / last_name / email / password / number_phone. cannot be empty",
       );
     }
     const numberPhone = numberPonselFormat(number_phone);
@@ -296,7 +297,7 @@ const registerWithGoogle = async (requestBody: any): Promise<any> => {
     }
     const findUser = await pool.query(
       "SELECT * FROM users_tb where email = $1",
-      [email]
+      [email],
     );
     if (findUser.rows.length > 0) {
       return executionError(404, "email is has been using, not valid");
@@ -327,7 +328,7 @@ const registerWithGoogle = async (requestBody: any): Promise<any> => {
     ]);
     const token = jwt.sign(
       { id: user_login.id, email: user_login.email },
-      seckretPrivate()
+      seckretPrivate(),
     );
     return {
       user_login,

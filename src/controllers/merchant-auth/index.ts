@@ -82,6 +82,10 @@ const loginUser = async (req: Request, res: Response, next: NextFunction) => {
         .status(apiResponse.status)
         .json({ status: apiResponse.status, message: apiResponse.message });
     }
+    res.cookie("JONVITER-AUTH", apiResponse.token, {
+      domain: "localhost",
+      path: "/",
+    });
     return res.status(200).json({
       status: 200,
       message: "Login User Successfully",
@@ -163,6 +167,13 @@ const loginMerchant = async (
         .status(apiResponse.status)
         .json({ status: apiResponse.status, message: apiResponse.message });
     }
+    res.cookie("token", apiResponse.token, {
+      httpOnly: true,
+      secure: false, // localhost memakai HTTP
+      sameSite: "lax",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000, // 1 hari
+    });
     return res.status(200).json({
       status: 200,
       message: "Login User Successfully",
@@ -194,6 +205,7 @@ const getUserMerchantBranch = async (
       });
     }
     const apiResponse = await merchantAuthService.getUserMerchantBranch(
+      req.params,
       req.headers,
     );
     if (apiResponse.executionError) {

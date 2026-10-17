@@ -9,6 +9,8 @@ import {
   mergeStringWithCharacter,
   bcryptCsfPassword,
   getUserIdFromToken,
+  authentication,
+  generateToken,
 } from "../../helpers";
 import { pool } from "../../database/pool";
 import crypto from "crypto";
@@ -24,18 +26,6 @@ import jwt, {
 } from "jsonwebtoken";
 const bcrypt = require("bcrypt");
 
-const SECRET = "POS-REST-API";
-
-const authentication = (salt: string, password: string) => {
-  return crypto
-    .createHmac("sha256", [salt, password].join("/"))
-    .update(SECRET)
-    .digest("hex");
-};
-
-const generateToken = async (data: any): Promise<string> => {
-  return jwt.sign(data, SECRET, { expiresIn: "7d" });
-};
 const userInformation = async (requestHeaders: any) => {
   try {
     const authHeader = requestHeaders.authorization;
@@ -373,8 +363,9 @@ const loginMerchant = async (requestBody: any): Promise<any> => {
       check_emailuser[0].salt as string,
       password,
     );
+
     if (check_emailuser[0].password !== expectedHash) {
-      return executionError(404, "Email atau password salah");
+      return executionError(404, "Email atau password salahs");
     }
     const user = check_emailuser[0];
     const { id: user_id, merchant_id, role, fullname } = user;
@@ -391,6 +382,7 @@ const loginMerchant = async (requestBody: any): Promise<any> => {
       role,
       fullname,
     });
+
     return {
       user: user_login,
       token: userToken,
