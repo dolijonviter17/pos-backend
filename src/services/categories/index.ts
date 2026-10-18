@@ -1,35 +1,19 @@
-import {
-  authentication,
-  random,
-  numberPonselFormat,
-  isNumberPonsel,
-  randomBytes,
-  getDateTime,
-  getDateMaximum,
-  seckretPrivate,
-  mergeStringWithCharacter,
-  bcryptCsfPassword,
-  getUserIdFromToken,
-} from "../../helpers";
+import { mergeStringWithCharacter, getUserIdFromToken } from "../../helpers";
 import { pool } from "../../database/pool";
 
 import { executionError } from "../responseHandling";
-import jwt, {
-  Jwt,
-  JwtPayload,
-  Secret,
-  TokenExpiredError,
-  JsonWebTokenError,
-  NotBeforeError,
-} from "jsonwebtoken";
 
 // Define an interface for the expected JWT payload
 
 // ================================== // ==================
 
-const listCategoryByMerchantId = async (requestParams: any): Promise<any> => {
+const listCategoryByMerchantId = async (
+  requestParams: any,
+  userAuth: any,
+): Promise<any> => {
   try {
-    const { merchant_id, offset, limit } = requestParams;
+    const { merchant_id } = userAuth;
+    const { offset, limit } = requestParams;
     let r_offset = offset ? offset : 0;
     let r_limit = limit ? limit : 10;
     if (!merchant_id) {
@@ -37,7 +21,7 @@ const listCategoryByMerchantId = async (requestParams: any): Promise<any> => {
     }
     let merchant_data = await pool.query(
       "SELECT id as merchant_id, name as merchant_name  FROM m_merchants WHERE id = $1 and is_active = true",
-      [merchant_id]
+      [merchant_id],
     );
 
     if (merchant_data.rows.length === 0) {
@@ -45,7 +29,7 @@ const listCategoryByMerchantId = async (requestParams: any): Promise<any> => {
     }
     let category_data = await pool.query(
       "SELECT * FROM m_categories WHERE merchant_id = $1 ORDER BY id  offset $2 limit $3",
-      [merchant_id, r_offset, r_limit]
+      [merchant_id, r_offset, r_limit],
     );
     if (category_data.rows.length === 0) {
       return executionError(404, "category not found");
@@ -59,14 +43,11 @@ const listCategoryByMerchantId = async (requestParams: any): Promise<any> => {
 
 const createNewCategoryByMerchantId = async (
   requestBody: any,
-  requestHeaders: any
+  userAuth: any,
 ): Promise<any> => {
   try {
-    const authHeader = requestHeaders.authorization;
-    const user_token = getUserIdFromToken(authHeader);
-    if (!user_token) {
-      return executionError(401, "token not valid");
-    }
+    const { merchant_id } = userAuth;
+
     const { category_name } = requestBody;
 
     if (!category_name) {
@@ -75,7 +56,7 @@ const createNewCategoryByMerchantId = async (
     let type_of_product = mergeStringWithCharacter(category_name);
     let category_data = await pool.query(
       "SELECT * FROM m_categories WHERE type_of_product = $1 AND merchant_id = $2",
-      [type_of_product, user_token.merchant_id]
+      [type_of_product, merchant_id],
     );
     if (category_data.rows.length > 0) {
       return executionError(404, "category was created");
@@ -83,7 +64,7 @@ const createNewCategoryByMerchantId = async (
 
     let insert_new_category = await pool.query(
       "INSERT INTO m_categories (category_name, type_of_product, merchant_id) VALUES ($1, $2, $3) RETURNING *",
-      [category_name, type_of_product, user_token.merchant_id]
+      [category_name, type_of_product, merchant_id],
     );
     return insert_new_category.rows[0];
   } catch (error) {
@@ -94,7 +75,7 @@ const createNewCategoryByMerchantId = async (
 const updateCategoryByMerchantId = async (
   requestParams: any,
   requestBody: any,
-  requestHeaders: any
+  requestHeaders: any,
 ): Promise<any> => {
   try {
     const authHeader = requestHeaders.authorization;
@@ -108,7 +89,7 @@ const updateCategoryByMerchantId = async (
     }
     let category_data = await pool.query(
       "SELECT * FROM m_categories WHERE id = $1 AND merchant_id = $2",
-      [requestParams.category_id, user_token.merchant_id]
+      [requestParams.category_id, user_token.merchant_id],
     );
     if (category_data.rows.length == 0) {
       return executionError(404, "category was created");
@@ -129,7 +110,7 @@ const updateCategoryByMerchantId = async (
         in_type_of_product,
         requestParams.category_id,
         user_token.merchant_id,
-      ]
+      ],
     );
     return update_category.rows[0];
   } catch (error) {

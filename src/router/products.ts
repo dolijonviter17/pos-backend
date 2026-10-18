@@ -14,7 +14,7 @@ export default (router: express.Router) => {
   );
   router.get("/product/:product_id", productsController.detailProductById);
   router.get(
-    "/product/:merchant_id/:category_id/:offset/:limit",
+    "/productlist/:category_id/:offset/:limit",
     productsController.listProductByCategoryId,
   );
 };

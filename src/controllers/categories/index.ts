@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import categoriesService from "../../services/categories";
 import { StatusCodes } from "http-status-codes";
 import { ApiError } from "../../error/apiError";
-import { isBodyEmpty } from "../../helpers";
+import { isBodyEmpty, verifyToken } from "../../helpers";
 import jwt, { JwtPayload, Secret } from "jsonwebtoken";
 import { seckretPrivate } from "../../helpers";
 import { pool } from "../../database/pool";
@@ -11,7 +11,7 @@ import { pool } from "../../database/pool";
 const listCategoryByMerchantId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.params)) {
@@ -20,8 +20,17 @@ const listCategoryByMerchantId = async (
           "categoriesService.listCategoryByMerchantId - params not provided!",
       });
     }
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
+    const userAuth = verifyToken(token);
+    if (!userAuth) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
     const apiResponse = await categoriesService.listCategoryByMerchantId(
-      req.params
+      req.params,
+      userAuth,
     );
     if (apiResponse.executionError) {
       return res
@@ -47,7 +56,7 @@ const listCategoryByMerchantId = async (
 const createNewCategoryByMerchantId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.headers)) {
@@ -56,15 +65,24 @@ const createNewCategoryByMerchantId = async (
           "categoriesService.createNewCategoryByMerchantId - headers not provided!",
       });
     }
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
+    const userAuth = verifyToken(token);
+    if (!userAuth) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
     if (isBodyEmpty(req.body)) {
       return res.status(StatusCodes.PRECONDITION_FAILED).json({
         message:
           "categoriesService.createNewCategoryByMerchantId - body not provided!",
       });
     }
+
     const apiResponse = await categoriesService.createNewCategoryByMerchantId(
       req.body,
-      req.headers
+      userAuth,
     );
     if (apiResponse.executionError) {
       return res
@@ -87,7 +105,7 @@ const createNewCategoryByMerchantId = async (
 const updateCategoryByMerchantId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.headers)) {
@@ -111,7 +129,7 @@ const updateCategoryByMerchantId = async (
     const apiResponse = await categoriesService.updateCategoryByMerchantId(
       req.params,
       req.body,
-      req.headers
+      req.headers,
     );
     if (apiResponse.executionError) {
       return res

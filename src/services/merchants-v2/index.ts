@@ -1,8 +1,5 @@
 import {
   authentication,
-  random,
-  numberPonselFormat,
-  isNumberPonsel,
   randomBytes,
   getDateTime,
   generateId,
@@ -394,21 +391,13 @@ const getMerchantInfo = async (requestParams: any): Promise<any> => {
   }
 };
 
-const getMerchantBranchByMerchantId = async (cookies: any): Promise<any> => {
+const getMerchantBranchByMerchantId = async (userAuth: any): Promise<any> => {
   try {
-    const token = cookies.token;
-    if (!token) {
-      return executionError(404, "token not found");
-    }
-    const userLogin = getUserIdFromToken(token);
-    if (!userLogin) {
-      return executionError(401, "token not valid");
-    }
+    const { merchant_id } = userAuth;
     const data_merchant = await pool.query(
       "SELECT * FROM m_merchant_branch WHERE id = $1",
-      [userLogin.merchant_id],
+      [merchant_id],
     );
-
     return data_merchant.rows;
   } catch (error) {
     return executionError(404, `Error table: ${error}`);

@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import productsService from "../../services/products";
 import { StatusCodes } from "http-status-codes";
 import { ApiError } from "../../error/apiError";
-import { isBodyEmpty } from "../../helpers";
+import { isBodyEmpty, verifyToken } from "../../helpers";
 import jwt, { JwtPayload, Secret } from "jsonwebtoken";
 import { seckretPrivate } from "../../helpers";
 import { pool } from "../../database/pool";
@@ -11,7 +11,7 @@ import { pool } from "../../database/pool";
 const menusByCategory = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.body)) {
@@ -42,7 +42,7 @@ const menusByCategory = async (
 const menusByMerchantId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.body)) {
@@ -73,7 +73,7 @@ const menusByMerchantId = async (
 const detailProductByMerchantId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.body)) {
@@ -83,7 +83,7 @@ const detailProductByMerchantId = async (
       });
     }
     const apiResponse = await productsService.detailProductByMerchantId(
-      req.body
+      req.body,
     );
     if (apiResponse.executionError) {
       return res
@@ -106,7 +106,7 @@ const detailProductByMerchantId = async (
 const detailProductById = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.params)) {
@@ -136,7 +136,7 @@ const detailProductById = async (
 const listProductByCategoryId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.params)) {
@@ -145,8 +145,19 @@ const listProductByCategoryId = async (
           "productsService.listProductByCategoryId - params not provided!",
       });
     }
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
+
+    const userAuth = verifyToken(token);
+
+    if (!userAuth) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
     const apiResponse = await productsService.listProductByCategoryId(
-      req.params
+      req.params,
+      userAuth,
     );
     if (apiResponse.executionError) {
       return res
@@ -172,7 +183,7 @@ const listProductByCategoryId = async (
 const createNewProductByMerchantId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.headers)) {
@@ -187,9 +198,19 @@ const createNewProductByMerchantId = async (
           "productsService.createNewProductByMerchantId - body not provided!",
       });
     }
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
+
+    const userAuth = verifyToken(token);
+
+    if (!userAuth) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
     const apiResponse = await productsService.createNewProductByMerchantId(
       req.body,
-      req.headers
+      userAuth,
     );
     if (apiResponse.executionError) {
       return res
@@ -212,7 +233,7 @@ const createNewProductByMerchantId = async (
 const updateProductByMerchantId = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (isBodyEmpty(req.headers)) {
@@ -229,7 +250,7 @@ const updateProductByMerchantId = async (
     }
     const apiResponse = await productsService.updateProductByMerchantId(
       req.body,
-      req.headers
+      req.headers,
     );
     if (apiResponse.executionError) {
       return res
