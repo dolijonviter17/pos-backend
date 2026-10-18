@@ -65,7 +65,7 @@ export default (router: express.Router) => {
    */
   router.patch(
     "/category/:category_id",
-    categoriesController.updateCategoryByMerchantId
+    categoriesController.updateCategoryByMerchantId,
   );
 
   /**
@@ -169,8 +169,8 @@ export default (router: express.Router) => {
    */
 
   router.get(
-    "/category/:merchant_id/:offset/:limit",
-    categoriesController.listCategoryByMerchantId
+    "/listcategory/:offset/:limit",
+    categoriesController.listCategoryByMerchantId,
   );
 
   /**
@@ -245,6 +245,6 @@ export default (router: express.Router) => {
 
   router.post(
     "/category/create",
-    categoriesController.createNewCategoryByMerchantId
+    categoriesController.createNewCategoryByMerchantId,
   );
 };

@@ -74,9 +74,18 @@ const getMerchantBranchByMerchantId = async (
           "merchantsV2Service.getMerchantBranchByMerchantId - params not provided!",
       });
     }
-    const apiResponse = await merchantsV2Service.getMerchantBranchByMerchantId(
-      req.cookies,
-    );
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
+
+    const userAuth = verifyToken(token);
+
+    if (!userAuth) {
+      return res.status(401).json({ status: 401, message: "token not found" });
+    }
+    const apiResponse =
+      await merchantsV2Service.getMerchantBranchByMerchantId(userAuth);
     if (apiResponse.executionError) {
       return res
         .status(apiResponse.status)
@@ -111,10 +120,8 @@ const createNewMerchantBranch = async (
     if (!token) {
       return res.status(401).json({ status: 401, message: "token not found" });
     }
-    console.log("token", token);
 
     const userAuth = verifyToken(token);
-    console.log("userAuth", userAuth);
 
     if (!userAuth) {
       return res.status(401).json({ status: 401, message: "token not found" });

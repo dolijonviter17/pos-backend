@@ -37,7 +37,7 @@ const menusByCategory = async (requestBody: any): Promise<any> => {
     }
     let merchant_data = await pool.query(
       "SELECT * FROM m_merchants WHERE id = $1 and is_active = true",
-      [merchant_id]
+      [merchant_id],
     );
 
     if (merchant_data.rows.length === 0) {
@@ -47,14 +47,14 @@ const menusByCategory = async (requestBody: any): Promise<any> => {
     if (!category_id) {
       let category_by_merchat = await pool.query(
         "SELECT id, category_name FROM m_categories WHERE merchant_id = $1",
-        [merchant_id]
+        [merchant_id],
       );
       return category_by_merchat.rows;
     }
 
     let category_data = await pool.query(
       "SELECT * FROM m_categories WHERE id = $1",
-      [category_id]
+      [category_id],
     );
 
     if (category_data.rows.length === 0) {
@@ -62,7 +62,7 @@ const menusByCategory = async (requestBody: any): Promise<any> => {
     }
     let product_data_bymerchantid = await pool.query(
       "SELECT * FROM m_products WHERE merchant_id = $1 AND category_id = $2 and is_active = true ORDER BY id offset $3 limit $4",
-      [merchant_id, category_id, offset, limit]
+      [merchant_id, category_id, offset, limit],
     );
     return product_data_bymerchantid.rows;
   } catch (error) {
@@ -80,7 +80,7 @@ const menusByMerchantId = async (requestBody: any): Promise<any> => {
     }
     let merchant_data = await pool.query(
       "SELECT * FROM m_merchants WHERE id = $1 and is_active = true",
-      [merchant_id]
+      [merchant_id],
     );
     if (merchant_data.rows.length === 0) {
       return [];
@@ -89,13 +89,13 @@ const menusByMerchantId = async (requestBody: any): Promise<any> => {
     if (!category_id) {
       let product_bymerchantid = await pool.query(
         "SELECT * FROM m_products WHERE merchant_id = $1 and is_active = true ORDER BY id  offset $2 limit $3",
-        [merchant_id, offset, limit]
+        [merchant_id, offset, limit],
       );
       return product_bymerchantid.rows;
     }
     let product_bymerchantid_and_category = await pool.query(
       "SELECT * FROM m_products WHERE merchant_id = $1 AND category_id = $2 and is_active = true ORDER BY id  offset $3 limit $4",
-      [merchant_id, category_id, offset, limit]
+      [merchant_id, category_id, offset, limit],
     );
     return product_bymerchantid_and_category.rows;
   } catch (error) {
@@ -117,14 +117,14 @@ const detailProductByMerchantId = async (requestBody: any): Promise<any> => {
     }
     let category_bymerchantid = await pool.query(
       "SELECT category_name, type_of_product FROM m_categories WHERE id = $1 AND merchant_id = $2",
-      [category_id, merchant_id]
+      [category_id, merchant_id],
     );
     if (category_bymerchantid.rows.length === 0) {
       return {};
     }
     let product_bymerchantid = await pool.query(
       "SELECT * FROM m_products WHERE id = $1 AND merchant_id = $2 AND category_id = $3 and is_active = true",
-      [product_id, merchant_id, category_id]
+      [product_id, merchant_id, category_id],
     );
     if (product_bymerchantid.rows.length === 0) {
       return {};
@@ -147,7 +147,7 @@ const detailProductById = async (requestParams: any): Promise<any> => {
     }
     let product_bymerchantid = await pool.query(
       "SELECT * FROM m_products WHERE id = $1 and is_active = true",
-      [product_id]
+      [product_id],
     );
     if (product_bymerchantid.rows.length === 0) {
       return executionError(404, "product not found");
@@ -155,12 +155,12 @@ const detailProductById = async (requestParams: any): Promise<any> => {
     let data_productId = product_bymerchantid.rows[0];
     let category_bymerchantid = await pool.query(
       "SELECT id as category_id, category_name, type_of_product FROM m_categories WHERE id = $1",
-      [data_productId.category_id]
+      [data_productId.category_id],
     );
 
     let merchant_byproduct = await pool.query(
       "SELECT id as merchant_id, name as merchant_name FROM m_merchants WHERE id = $1",
-      [data_productId.merchant_id]
+      [data_productId.merchant_id],
     );
 
     let data_detailproduct = {
@@ -182,9 +182,14 @@ const detailProductById = async (requestParams: any): Promise<any> => {
   }
 };
 
-const listProductByCategoryId = async (requestParams: any): Promise<any> => {
+const listProductByCategoryId = async (
+  requestParams: any,
+  userAuth: any,
+): Promise<any> => {
   try {
-    const { category_id, merchant_id, limit, offset } = requestParams;
+    const { merchant_id } = userAuth;
+
+    const { category_id, limit, offset } = requestParams;
     let r_offset = offset ? offset : 0;
     let r_limit = limit ? limit : 10;
     if (!merchant_id) {
@@ -196,7 +201,7 @@ const listProductByCategoryId = async (requestParams: any): Promise<any> => {
 
     let merchant_data = await pool.query(
       "SELECT id as merchant_id, name as merchant_name FROM m_merchants WHERE id = $1 and is_active = true",
-      [merchant_id]
+      [merchant_id],
     );
     if (merchant_data.rows.length === 0) {
       return executionError(404, "merchant not found");
@@ -204,7 +209,7 @@ const listProductByCategoryId = async (requestParams: any): Promise<any> => {
     let data_merchant = merchant_data.rows[0];
     let category_bymerchantid = await pool.query(
       "SELECT id as category_id, category_name, type_of_product FROM m_categories WHERE id = $1 AND merchant_id = $2",
-      [category_id, data_merchant.merchant_id]
+      [category_id, data_merchant.merchant_id],
     );
     if (category_bymerchantid.rows.length === 0) {
       return executionError(404, "category not found");
@@ -212,7 +217,7 @@ const listProductByCategoryId = async (requestParams: any): Promise<any> => {
     let data_categoory = category_bymerchantid.rows[0];
     let product_bymerchantid = await pool.query(
       "SELECT id, product_name, description, spesification, photo, price, is_discount, price_discount, percent_discount FROM m_products WHERE  category_id = $1 and is_active = true ORDER BY id  offset $2 limit $3",
-      [data_categoory.category_id, r_offset, r_limit]
+      [data_categoory.category_id, r_offset, r_limit],
     );
     let data_productbycategory = product_bymerchantid.rows;
     if (data_productbycategory.length == 0) {
@@ -232,14 +237,11 @@ const listProductByCategoryId = async (requestParams: any): Promise<any> => {
 
 const createNewProductByMerchantId = async (
   requestBody: any,
-  requestHeaders: any
+  userAuth: any,
 ): Promise<any> => {
   try {
-    const authHeader = requestHeaders.authorization;
-    const user_token = getUserIdFromToken(authHeader);
-    if (!user_token) {
-      return executionError(401, "token not valid");
-    }
+    const { merchant_id } = userAuth;
+
     const {
       category_id,
       product_name,
@@ -251,13 +253,11 @@ const createNewProductByMerchantId = async (
       price_discount,
       percent_discount,
     } = requestBody;
-
+    const image_product = photo ? photo : null;
     if (!price) {
       return executionError(404, "price is empty");
     }
-    if (!photo) {
-      return executionError(404, "photo is empty");
-    }
+
     if (!category_id) {
       return executionError(404, "category_id is empty");
     }
@@ -276,17 +276,16 @@ const createNewProductByMerchantId = async (
       curr_price_discount = price_discount;
       curr_percent_discount = percent_discount;
     }
-
     let merchant_data = await pool.query(
       "SELECT * FROM m_merchants WHERE id = $1",
-      [user_token.merchant_id]
+      [merchant_id],
     );
     if (merchant_data.rows.length === 0) {
       return executionError(404, "merchant not found");
     }
     let category_bymerchantid = await pool.query(
       "SELECT * FROM m_categories WHERE id = $1",
-      [category_id]
+      [category_id],
     );
     if (category_bymerchantid.rows.length === 0) {
       return executionError(404, "category not found");
@@ -294,17 +293,17 @@ const createNewProductByMerchantId = async (
     let insert_new_product = await pool.query(
       "INSERT INTO m_products (merchant_id, category_id, product_name, description, spesification, photo, price, is_discount, price_discount, percent_discount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
       [
-        user_token.merchant_id,
+        merchant_id,
         category_id,
         product_name,
         description,
         spesification,
-        photo,
+        image_product,
         price,
         is_discount,
         curr_price_discount,
         curr_percent_discount,
-      ]
+      ],
     );
     let data_productbycategory = insert_new_product.rows[0];
     return data_productbycategory;
@@ -315,7 +314,7 @@ const createNewProductByMerchantId = async (
 
 const updateProductByMerchantId = async (
   requestBody: any,
-  requestHeaders: any
+  requestHeaders: any,
 ): Promise<any> => {
   try {
     const authHeader = requestHeaders.authorization;
@@ -328,7 +327,7 @@ const updateProductByMerchantId = async (
     }
     let find_product = await pool.query(
       "SELECT * FROM m_products WHERE id = $1 AND merchant_id = $2",
-      [requestBody.product_id, user_token.merchant_id]
+      [requestBody.product_id, user_token.merchant_id],
     );
     if (find_product.rows.length === 0) {
       return executionError(404, "product not found");
@@ -399,7 +398,7 @@ const updateProductByMerchantId = async (
         in_percent_discount,
         requestBody.product_id,
         user_token.merchant_id,
-      ]
+      ],
     );
     return update_product.rows[0];
   } catch (error) {
