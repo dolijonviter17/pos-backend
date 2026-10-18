@@ -169,7 +169,7 @@ export default (router: express.Router) => {
    */
 
   router.get(
-    "/listcategory/:offset/:limit",
+    "/listcategoryproduct/:offset/:limit",
     categoriesController.listCategoryByMerchantId,
   );
 
